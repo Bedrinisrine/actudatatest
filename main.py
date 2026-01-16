@@ -188,7 +188,7 @@ def search_documents(documents: dict[str, str], query: str) -> tuple[str, List[s
     1. Normalizes both query and documents (lowercase, no accents, no punctuation)
     2. Splits into word tokens
     3. Uses keyword intersection instead of full string matching
-    4. Requires at least 2 meaningful words to match
+    4. Requires at least 1 meaningful word to match
     
     This ensures that "Que couvre la RC Pro" correctly matches
     "La RC Pro couvre les dommages causés aux tiers..." even with:
@@ -230,9 +230,15 @@ def search_documents(documents: dict[str, str], query: str) -> tuple[str, List[s
             # This finds which meaningful words from the query appear in the document
             matching_tokens = query_tokens.intersection(content_tokens)
             
-            # Require at least 2 matching meaningful words
-            # This ensures the match is meaningful and not just a coincidence
-            if len(matching_tokens) >= 2:
+            # Require at least 1 matching meaningful word
+            # For this dataset, one matching keyword is sufficient because:
+            # 1. Documents are domain-specific (insurance procedures, products)
+            # 2. Stop words are filtered out, so matching tokens are meaningful
+            # 3. Queries like "Quel est l'email pour déclarer un sinistre?" may only
+            #    have one meaningful keyword ("sinistre") but should still match
+            #    relevant documents. Requiring 2+ tokens would incorrectly reject
+            #    valid matches in such cases.
+            if len(matching_tokens) >= 1:
                 matching_docs.append(filename)
     
     if not matching_docs:
