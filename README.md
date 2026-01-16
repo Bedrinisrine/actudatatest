@@ -1,229 +1,181 @@
-# Multi-Tenant Document Search API
+Project Overview
 
-A technical test project demonstrating a secure multi-tenant SaaS application with a FastAPI backend and React frontend. This system allows different clients (tenants) to search through their own private document collections while ensuring complete data isolation between clients.
+This project is a technical demonstration of a multi-tenant SaaS application.
 
-## What This Project Does
+It allows different clients (tenants) to search their own private documents while guaranteeing strict data isolation between clients.
 
-This application provides a document search service where:
+Each client:
 
-- **Different clients have separate document collections** - Client A can only see Client A's documents, and Client B can only see Client B's documents
-- **Security is enforced server-side** - The system automatically determines which client is making a request and restricts access to only their documents
-- **Simple keyword search** - Users can ask questions and receive answers based on relevant documents
+Has its own documents
 
-Think of it like a secure filing cabinet where each client has their own locked drawer - they can only access their own files, never someone else's.
+Cannot see or access documents from other clients
 
-## Project Structure
+Is identified only by a secure API key sent automatically by the interface
 
-```
+The goal is to demonstrate:
+✔ Secure tenant separation
+✔ Simple and reliable backend logic
+✔ Easy-to-use interface for non-technical users
+
+Technologies Used
+
+Backend: Python, FastAPI
+
+Frontend: React (Vite)
+
+Storage: Local files (per tenant folders)
+
+Security: API Key via HTTP header (X-API-KEY)
+
+Project Structure
 TESTACTUDATA/
-├── main.py                 # FastAPI backend server
+├── main.py                 # Backend API
 ├── requirements.txt        # Python dependencies
-├── documents/             # Document storage (separated by tenant)
-│   ├── tenantA/          # Client A's documents
-│   └── tenantB/          # Client B's documents
-└── frontend/             # React frontend application
-    ├── src/
-    └── package.json
-```
+├── documents/
+│   ├── tenantA/            # Client A documents
+│   └── tenantB/            # Client B documents
+└── frontend/               # Web interface (React)
 
-## Prerequisites
+Prerequisites
 
-- **Python 3.8+** installed on your system
-- **Node.js 16+** and npm installed on your system
+Make sure you have installed:
 
-## Running the Application
+✅ Python 3.8 or higher
 
-### Step 1: Start the Backend (FastAPI)
+✅ Node.js 16 or higher (with npm)
 
-1. Open a terminal/command prompt in the project root directory (`TESTACTUDATA`)
+Check versions:
 
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+python --version
+node --version
 
-3. Start the FastAPI server:
-   ```bash
-   uvicorn main:app --reload
-   ```
+How to Run the Application
+▶ Step 1 — Start Backend
 
-   The backend will be running at `http://localhost:8000`
+Open a terminal in the project folder:
 
-   You should see output indicating the server is running. Keep this terminal window open.
-
-### Step 2: Start the Frontend (React)
-
-1. Open a **new** terminal/command prompt window
-
-2. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-3. Install Node.js dependencies (first time only):
-   ```bash
-   npm install
-   ```
-
-4. Start the React development server:
-   ```bash
-   npm run dev
-   ```
-
-   The frontend will be running at `http://localhost:3000`
-
-   Your web browser should automatically open, or you can manually navigate to `http://localhost:3000`
+pip install -r requirements.txt
+uvicorn main:app --reload
 
 
+Backend runs on:
 
-### Test Scenario 1: Client A
+http://localhost:8000
 
-1. **Select Client A** from the dropdown menu at the top of the page
 
-2. **Ask a question about Client A's documents:**
-   - Try: "résiliation" (about cancellation procedures)
-   - Or: "RC Pro" (about the RC Pro product)
-   - Or: "sinistre" (about claims)
-   
-   **Expected Result:** You should see an answer with source document names (e.g., docA1_procedure_resiliation.txt or docA2_produit_rc_pro_a.txt)
+⚠️ Keep this terminal open.
 
-3. **Ask a question about Client B's documents:**
-   - Try: "sous-traitance" (this term only appears in Client B's documents)
-   
-   **Expected Result:** You should see "Aucune information disponible pour ce client" (No information available for this client)
-   
-   This proves that Client A cannot access Client B's documents.
+▶ Step 2 — Start Frontend
 
-### Test Scenario 2: Client B
+Open a second terminal:
 
-1. **Select Client B** from the dropdown menu
+cd frontend
+npm install
+npm run dev
 
-2. **Ask a question about Client B's documents:**
-   - Try: "sous-traitance" (about subcontracting exclusions)
-   - Or: "sinistre" (about claims procedures)
-   - Or: "claims@assureur-b.com" (Client B's claims email)
-   
-   **Expected Result:** You should see an answer with source document names (e.g., docB1_procedure_sinistre.txt or docB2_produit_rc_pro_b.txt)
 
-3. **Ask a question about Client A's documents:**
-   - Try: "assureur-a.fr" (this email only appears in Client A's documents)
-   
-   **Expected Result:** You should see "Aucune information disponible pour ce client"
-   
-   This proves that Client B cannot access Client A's documents.
+Open browser:
 
-### What This Proves
+http://localhost:3000
 
-✅ **Tenant Isolation Works:** Each client can only access their own documents  
-✅ **Security is Enforced:** The system prevents cross-client data access  
-✅ **User-Friendly:** Non-technical users can easily test and verify the system
+How to Use the Application
 
-## Understanding Tenant Isolation
+Select a client from the dropdown:
 
-### What is Tenant Isolation?
+Client A
 
-Tenant isolation means that each client (tenant) has their own completely separate data space. It's like having separate bank accounts - even though they're in the same bank, one account holder can never see or access another account holder's money.
+Client B
 
-### How It Works in This Application
+Type a question.
 
-1. **Client Selection:** When you select "Client A" or "Client B" in the dropdown, the system uses a special key (API key) to identify which client you are.
+Click Search.
 
-2. **Server-Side Security:** The server (not your browser) determines which client you are based on this key. This is important because it means you cannot trick the system into showing you another client's documents.
+The system will return:
 
-3. **Automatic Filtering:** Once the server knows which client you are, it automatically only searches through that client's documents. It physically cannot access the other client's documents.
+The answer (if found)
 
-4. **No Cross-Access:** Even if you try to ask about something that exists in another client's documents, the system will correctly respond that no information is available for your client.
+The source document(s)
 
-### Why This Matters
+Example Tests
+✅ Client A Test
 
-In a real business scenario:
-- **Legal Compliance:** Different clients may have different privacy requirements
-- **Data Protection:** Prevents accidental or malicious access to wrong data
-- **Trust:** Clients need to know their data is completely separate from others
-- **Regulations:** Many industries require strict data separation (healthcare, finance, etc.)
+Select Client A, ask:
 
-## Why Simple Search Instead of Advanced AI?
+Quelle est l’exclusion du produit RC Pro ?
 
-This application uses a simple keyword-based search approach rather than advanced machine learning or AI. Here's why:
 
-### 1. **Clarity and Transparency**
-   - Simple search is easy to understand and debug
-   - You can see exactly why a document matched (it contains your search term)
-   - No "black box" behavior that's hard to explain
+Expected:
 
-### 2. **Reliability**
-   - Simple search is predictable - same query always gives same results
-   - No unexpected behavior from AI models
-   - Easier to test and verify correctness
+Travaux en hauteur au-delà de 3 mètres
 
-### 3. **Performance**
-   - Fast response times without heavy computation
-   - No need for expensive AI infrastructure
-   - Works well even with limited resources
+✅ Client B Test
 
-### 4. **Interview Context**
-   - For a technical test, simplicity demonstrates good engineering judgment
-   - Shows focus on core requirements (tenant isolation) rather than over-engineering
-   - Easier for reviewers to understand and evaluate
+Select Client B, ask:
 
-### 5. **Real-World Suitability**
-   - Many business use cases don't need AI - keyword search is sufficient
-   - Easier to maintain and update
-   - Lower operational costs
+Quelle est l’exclusion du produit RC Pro B ?
 
-**Note:** In a production system, you might add more sophisticated search later if needed, but starting simple is often the right engineering decision.
 
-## Technical Details (For Developers)
+Expected:
 
-### Backend Architecture
+Sous-traitance non déclarée
 
-- **Framework:** FastAPI (Python)
-- **Tenant Resolution:** Centralized in `resolve_tenant()` function
-- **Security:** API keys in `X-API-KEY` header only (never in request body)
-- **Document Loading:** Tenant-specific folder access enforced
-- **Search:** Case-insensitive keyword matching
+🔒 Security Test
 
-### Frontend Architecture
+Select Client A, ask:
 
-- **Framework:** React with Vite
-- **State Management:** React hooks (useState)
-- **API Communication:** Fetch API with proper header handling
-- **Error Handling:** User-friendly error messages
+Sous-traitance non déclarée
 
-### API Endpoints
 
-- `GET /` - Health check
-- `POST /search` - Search endpoint (requires `X-API-KEY` header)
+Expected:
 
-## Troubleshooting
+Aucune information disponible pour ce client
 
-### Backend won't start
-- Make sure Python 3.8+ is installed: `python --version`
-- Check that all dependencies are installed: `pip install -r requirements.txt`
-- Ensure port 8000 is not already in use
 
-### Frontend won't start
-- Make sure Node.js is installed: `node --version`
-- Run `npm install` in the frontend directory
-- Ensure port 3000 is not already in use
+This proves tenant isolation works.
 
-### "CORS error" in browser
-- Make sure the backend is running before starting the frontend
-- Check that backend is on `http://localhost:8000`
+Tenant Isolation Explained
 
-### No results found
-- Verify you're asking about content that exists in the selected client's documents
-- Check the document files in `documents/tenantA/` or `documents/tenantB/`
-- Try simpler, shorter search terms
+Tenant isolation means that each client has their own private data space.
 
-## Security Notes
+How this project guarantees isolation:
 
-- **API Keys:** In production, these would be stored securely (database, secrets manager)
-- **CORS:** Currently allows localhost:3000 for development
-- **Document Access:** File system access is restricted to tenant-specific folders
-- **Input Validation:** FastAPI automatically validates request structure
+The client identity is resolved only from the HTTP header X-API-KEY.
 
-## License
+The tenant is never sent in the request body.
 
-This is a technical test project for recruitment purposes.
+Documents are physically separated in folders:
+
+documents/tenantA/
+documents/tenantB/
+
+
+The backend loads only the folder belonging to the authenticated tenant.
+
+Cross-tenant access is impossible by design.
+
+API Endpoints
+
+GET /
+Health check
+
+POST /search
+Body:
+
+{
+  "query": "your question"
+}
+
+
+Header:
+
+X-API-KEY
+
+Stopping the Application
+
+Press:
+
+CTRL + C
+
+
+in both terminal windows.
 
