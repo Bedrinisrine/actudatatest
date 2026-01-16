@@ -182,20 +182,15 @@ def tokenize_text(text: str) -> Set[str]:
 
 def search_documents(documents: dict[str, str], query: str) -> tuple[str, List[str]]:
     """
-    Improved keyword-based search with normalization and token matching.
+    Improved keyword-based search with precision scoring and best-match selection.
     
     This search approach:
     1. Normalizes both query and documents (lowercase, no accents, no punctuation)
     2. Splits into word tokens
-    3. Uses keyword intersection instead of full string matching
-    4. Requires at least 1 meaningful word to match
-    
-    This ensures that "Que couvre la RC Pro" correctly matches
-    "La RC Pro couvre les dommages causés aux tiers..." even with:
-    - Different word order
-    - Accents (causés vs causes)
-    - Punctuation differences
-    - Case differences
+    3. Scores documents by number of matching tokens
+    4. Selects only the best-matching document(s)
+    5. Scores sentences and selects the best sentence(s)
+    6. Prioritizes email-containing sentences for email queries
     
     Args:
         documents: Dictionary mapping filename to content
@@ -208,67 +203,80 @@ def search_documents(documents: dict[str, str], query: str) -> tuple[str, List[s
     query_normalized = normalize_text(query)
     query_tokens = tokenize_text(query_normalized)
     
-    # Need at least 2 meaningful words in the query to search
-    if len(query_tokens) < 2:
-        # If query has less than 2 meaningful words, fall back to simple matching
-        # This handles edge cases like single word queries
-        query_lower = query.lower()
-        matching_docs = []
-        for filename, content in documents.items():
-            if query_lower in content.lower():
-                matching_docs.append(filename)
-    else:
-        matching_docs = []
-        
-        # Search through all documents for the tenant
-        for filename, content in documents.items():
-            # Normalize and tokenize document content
-            content_normalized = normalize_text(content)
-            content_tokens = tokenize_text(content_normalized)
-            
-            # Find intersection of query tokens and document tokens
-            # This finds which meaningful words from the query appear in the document
-            matching_tokens = query_tokens.intersection(content_tokens)
-            
-            # Require at least 1 matching meaningful word
-            # For this dataset, one matching keyword is sufficient because:
-            # 1. Documents are domain-specific (insurance procedures, products)
-            # 2. Stop words are filtered out, so matching tokens are meaningful
-            # 3. Queries like "Quel est l'email pour déclarer un sinistre?" may only
-            #    have one meaningful keyword ("sinistre") but should still match
-            #    relevant documents. Requiring 2+ tokens would incorrectly reject
-            #    valid matches in such cases.
-            if len(matching_tokens) >= 1:
-                matching_docs.append(filename)
+    # Check if query is about email
+    query_lower = query.lower()
+    is_email_query = 'email' in query_lower or 'mail' in query_lower
     
-    if not matching_docs:
-        return "Aucune information disponible pour ce client", []
-    
-    # Build answer from matching documents
-    # Extract relevant sentences that contain matching keywords
-    answer_parts = []
-    query_normalized = normalize_text(query)
-    query_tokens = tokenize_text(query_normalized)
-    
-    for filename in matching_docs:
-        content = documents[filename]
+    # Score each document by number of matching tokens
+    doc_scores = {}
+    for filename, content in documents.items():
+        # Normalize and tokenize document content
         content_normalized = normalize_text(content)
         content_tokens = tokenize_text(content_normalized)
         
-        # Find sentences that contain matching keywords
-        sentences = content.split('.')
+        # Find intersection of query tokens and document tokens
+        matching_tokens = query_tokens.intersection(content_tokens)
+        
+        # Score = number of matching tokens
+        if len(matching_tokens) >= 1:
+            doc_scores[filename] = len(matching_tokens)
+    
+    if not doc_scores:
+        return "Aucune information disponible pour ce client", []
+    
+    # Select only documents with the highest score (best match)
+    max_score = max(doc_scores.values())
+    best_docs = [filename for filename, score in doc_scores.items() if score == max_score]
+    
+    # Find the best sentence from the best document(s)
+    best_sentences = []
+    
+    for filename in best_docs:
+        content = documents[filename]
+        
+        # Split content into sentences/lines
+        # Handle both line-based documents (split by newline) and sentence-based (split by period)
+        # First split by newlines, then by periods within each line
+        sentences = []
+        for line in content.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            # If line contains periods, split by periods; otherwise use the whole line
+            if '.' in line:
+                line_sentences = [s.strip() for s in line.split('.') if s.strip()]
+                sentences.extend(line_sentences)
+            else:
+                sentences.append(line)
+        
+        # Score each sentence
+        sentence_scores = []
         for sentence in sentences:
             sentence_normalized = normalize_text(sentence)
             sentence_tokens = tokenize_text(sentence_normalized)
             
-            # If sentence contains at least one matching token, include it
-            if query_tokens.intersection(sentence_tokens):
-                answer_parts.append(sentence.strip())
-                break  # Take first relevant sentence per document
+            # Count matching tokens in this sentence
+            matching_count = len(query_tokens.intersection(sentence_tokens))
+            
+            # Bonus: if email query and sentence contains '@', prioritize it
+            email_bonus = 10 if (is_email_query and '@' in sentence) else 0
+            
+            score = matching_count + email_bonus
+            sentence_scores.append((score, sentence))
+        
+        # Select the sentence with the highest score
+        if sentence_scores:
+            best_score, best_sentence = max(sentence_scores, key=lambda x: x[0])
+            if best_score > 0:  # Only include if it has at least one match
+                best_sentences.append(best_sentence)
     
-    answer = " ".join(answer_parts) if answer_parts else f"Found in {len(matching_docs)} document(s)"
+    if not best_sentences:
+        return "Aucune information disponible pour ce client", []
     
-    return answer, matching_docs
+    # Return the best sentence(s) - if multiple best docs have same score, include all
+    answer = ". ".join(best_sentences)
+    
+    return answer, best_docs
 
 
 @app.get("/")
